@@ -1514,16 +1514,13 @@ body {
 .bot-dot {
     width: 16px;
     height: 16px;
-    background: #32d74b;
     border: 2px solid #fff;
     border-radius: 50%;
     position: absolute;
-    top: 0;
-    left: 0;
     transform: translate(-50%, -50%);
     box-shadow: 0 0 10px rgba(50, 215, 75, 0.7);
-    transition: all 0.3s ease;
-    z-index: 1;
+    transition: transform 0.3s ease;
+    z-index: 2;
 }
 
 .bot-name {
@@ -1534,35 +1531,32 @@ body {
     color: #8e8e93;
     font-size: 12px;
     white-space: nowrap;
+    pointer-events: none;
 }
 
 .bot1 { background: #32d74b; }
 .bot2 { background: #5856D6; }
 .bot3 { background: #FF9500; }
 
-@keyframes botPulse {
-    0% { transform: translate(-50%, -50%) scale(1); }
-    50% { transform: translate(-50%, -50%) scale(1.2); }
-    100% { transform: translate(-50%, -50%) scale(1); }
-}
-
 .bot-dot.passing {
-    animation: botPulse 0.5s ease;
+    transform: translate(-50%, -50%) scale(1.3);
+    transition: transform 0.2s ease;
 }
 
-.track-dot {
-    width: 24px;
-    height: 24px;
-    background: #FF2D55;
-    border: 3px solid #fff;
-    border-radius: 50%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 15px rgba(255, 45, 85, 0.7);
-    transition: all 0.3s ease;
-    z-index: 2;
+/* Ensure the track container has proper positioning */
+.track-container {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+.track-path {
+    width: 95%;
+    height: 80%;
+    position: relative;
 }
 
 /* Calories page styles */
@@ -1678,32 +1672,4 @@ body {
 .nutrition-value {
     font-size: 18px;
     font-weight: bold;
-}
-
-.player-dot {
-    width: 16px;
-    height: 16px;
-    background: #FF9500;
-    border: 2px solid #fff;
-    border-radius: 50%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 10px rgba(255, 149, 0, 0.7);
-    transition: all 0.3s ease;
-    z-index: 2;
-}
-
-.player-name {
-    position: absolute;
-    top: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #8e8e93;
-    font-size: 12px;
-    white-space: nowrap;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 2px 6px;
-    border-radius: 10px;
 }

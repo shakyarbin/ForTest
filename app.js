@@ -82,16 +82,17 @@ class StepTracker {
         // Load saved data
         this.loadSavedData();
 
-        // Initialize bots
+        // Initialize bots with proper selectors
         this.bots = [
-            { element: document.querySelector('.bot1'), progress: 0, speed: 0.001 },
-            { element: document.querySelector('.bot2'), progress: 0, speed: 0.0015 },
-            { element: document.querySelector('.bot3'), progress: 0, speed: 0.0008 }
+            { element: document.querySelector('.bot-dot.bot1'), progress: 0, speed: 0.001 },
+            { element: document.querySelector('.bot-dot.bot2'), progress: 0, speed: 0.0015 },
+            { element: document.querySelector('.bot-dot.bot3'), progress: 0, speed: 0.0008 }
         ];
         
-        // Initialize bot positions
+        // Initialize bot positions and start animation immediately
+        this.isBotsMoving = true;
         this.resetBotPositions();
-        this.isBotsMoving = false;
+        this.animateBots();
     }
 
     initializeChart() {
@@ -198,41 +199,28 @@ class StepTracker {
     }
 
     async requestMotionPermission() {
-        try {
-            // For iOS devices
-            if (typeof DeviceMotionEvent !== 'undefined' && 
-                typeof DeviceMotionEvent.requestPermission === 'function') {
+        if (typeof window !== "undefined" && "DeviceMotionEvent" in window) {
+            if (typeof DeviceMotionEvent.requestPermission === "function") {
                 const permissionState = await DeviceMotionEvent.requestPermission();
-                if (permissionState !== 'granted') {
-                    throw new Error('Motion permission denied');
+                if (permissionState !== "granted") {
+                    throw new Error("Motion permission denied. Please enable it in device settings.");
                 }
             }
-            // For Android devices - no permission needed
-            return true;
-        } catch (error) {
-            // If error occurs but device supports motion events, continue anyway
-            if (window.DeviceMotionEvent !== undefined) {
-                return true;
-            }
-            throw new Error('Device motion not supported or permission denied');
+        } else {
+            throw new Error("Device motion not supported on this device");
         }
     }
 
     startTracking() {
-        try {
-            window.addEventListener('devicemotion', this.handleMotion);
-            this.isTracking = true;
-            this.startBtn.textContent = 'STOP';
-            this.startBtn.style.backgroundColor = '#FF453A';
-            this.startBtn.classList.add('active');
-            // Start bot animation when tracking starts
-            this.isBotsMoving = true;
-            if (!this.animationFrame) {
-                this.animateBots();
-            }
-        } catch (error) {
-            console.error('Error starting motion tracking:', error);
-            alert('Could not start motion tracking. Please ensure your device supports motion detection.');
+        window.addEventListener('devicemotion', this.handleMotion);
+        this.isTracking = true;
+        this.startBtn.textContent = 'STOP';
+        this.startBtn.style.backgroundColor = '#FF453A';
+        this.startBtn.classList.add('active');
+        // Start bot animation when tracking starts
+        this.isBotsMoving = true;
+        if (!this.animationFrame) {
+            this.animateBots();
         }
     }
 
@@ -253,18 +241,13 @@ class StepTracker {
     handleMotion(event) {
         if (!this.isTracking) return;
 
-        // Add fallback for Android devices that don't provide accelerationIncludingGravity
-        const z = event.accelerationIncludingGravity ? 
-            event.accelerationIncludingGravity.z : 
-            (event.acceleration ? event.acceleration.z : null);
-
+        const z = event.accelerationIncludingGravity.z;
         if (z === null) return;
 
         const currentTime = Date.now();
         const deltaZ = Math.abs(z - (this.lastZ || z));
         
-        // Adjusted threshold for better sensitivity
-        if (deltaZ > 1.5 && currentTime - this.lastStepTime >= 250) {
+        if (deltaZ > 2 && currentTime - this.lastStepTime >= 333) {
             if (!this.moving) {
                 this.steps++;
                 this.lastStepTime = currentTime;
@@ -272,7 +255,7 @@ class StepTracker {
                 this.updateHourlySteps();
                 this.updateDisplays();
             }
-        } else if (deltaZ < 0.8) {
+        } else if (deltaZ < 1) {
             this.moving = false;
         }
         
@@ -409,51 +392,65 @@ class StepTracker {
     }
 
     resetBotPositions() {
-        const progress = document.querySelector('.progress');
-        if (!progress) return;
+        const track = document.querySelector('.track');
+        if (!track) return;
         
-        this.bots.forEach(bot => {
+        this.bots.forEach((bot, index) => {
+            if (!bot.element) return;
+            
             bot.progress = 0;
-            const point = progress.getPointAtLength(0);
+            const point = track.getPointAtLength(0);
             bot.element.style.left = `${point.x}px`;
             bot.element.style.top = `${point.y}px`;
             bot.element.style.transform = 'translate(-50%, -50%)';
-            bot.speed = Math.random() * 0.001 + 0.0005; // Random speed between 0.0005 and 0.0015
+            // Give each bot a different speed
+            bot.speed = 0.0005 + (index * 0.0003);
         });
     }
 
     animateBots() {
-        const progress = document.querySelector('.progress');
-        if (!progress) return;
+        const track = document.querySelector('.track');
+        if (!track) return;
         
-        const pathLength = progress.getTotalLength();
+        const pathLength = track.getTotalLength();
         
         const updateBot = (bot) => {
-            if (!this.isBotsMoving) return;
-            bot.progress += bot.speed * (Math.random() * 0.5 + 0.75); // Random speed variation
+            if (!bot.element) return;
+            
+            bot.progress += bot.speed;
             if (bot.progress >= 1) bot.progress = 0;
             
-            const point = progress.getPointAtLength(pathLength * bot.progress);
+            const point = track.getPointAtLength(pathLength * bot.progress);
             bot.element.style.left = `${point.x}px`;
             bot.element.style.top = `${point.y}px`;
             
             // Calculate rotation based on path direction
-            const nextPoint = progress.getPointAtLength(Math.min(pathLength * (bot.progress + 0.01), pathLength));
+            const nextPoint = track.getPointAtLength(Math.min(pathLength * (bot.progress + 0.01), pathLength));
             const angle = Math.atan2(nextPoint.y - point.y, nextPoint.x - point.x) * 180 / Math.PI;
             bot.element.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
             
             // Check if bot passes the player
-            const playerProgress = 1 - (progress.style.strokeDashoffset.replace('px', '') / pathLength);
-            if (Math.abs(bot.progress - playerProgress) < 0.02) {
-                bot.element.classList.add('passing');
-                setTimeout(() => bot.element.classList.remove('passing'), 500);
+            const playerDot = document.querySelector('.track-dot');
+            if (playerDot) {
+                const playerRect = playerDot.getBoundingClientRect();
+                const botRect = bot.element.getBoundingClientRect();
+                const distance = Math.hypot(
+                    playerRect.left - botRect.left,
+                    playerRect.top - botRect.top
+                );
+                
+                if (distance < 30 && !bot.element.classList.contains('passing')) {
+                    bot.element.classList.add('passing');
+                    setTimeout(() => bot.element.classList.remove('passing'), 500);
+                }
             }
         };
         
-        // Update bot positions
         const animate = () => {
-            this.bots.forEach(updateBot);
-            this.animationFrame = requestAnimationFrame(animate);
+            if (this.isBotsMoving) {
+                this.bots.forEach(updateBot);
+                this.animationFrame = requestAnimationFrame(animate);
+            }
         };
         
         animate();
